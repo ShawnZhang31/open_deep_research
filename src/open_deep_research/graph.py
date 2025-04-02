@@ -59,6 +59,7 @@ async def generate_report_plan(state: ReportState, config: RunnableConfig):
     # Inputs
     topic = state["topic"]
     feedback = state.get("feedback_on_report_plan", None)
+    print(topic)
 
     # Get configuration
     configurable = Configuration.from_runnable_config(config)
@@ -75,7 +76,11 @@ async def generate_report_plan(state: ReportState, config: RunnableConfig):
     # Set writer model (model used for query writing)
     writer_provider = get_config_value(configurable.writer_provider)
     writer_model_name = get_config_value(configurable.writer_model)
-    writer_model = init_chat_model(model=writer_model_name, model_provider=writer_provider) 
+    api_key = get_config_value(configurable.openai_api_key)
+    base_url = get_config_value(configurable.openai_base_url)
+    writer_model = init_chat_model(model=writer_model_name, model_provider=writer_provider, api_key=api_key, base_url=base_url) 
+    
+
     structured_llm = writer_model.with_structured_output(Queries)
 
     # Format system instructions
@@ -97,6 +102,8 @@ async def generate_report_plan(state: ReportState, config: RunnableConfig):
     # Set the planner
     planner_provider = get_config_value(configurable.planner_provider)
     planner_model = get_config_value(configurable.planner_model)
+    api_key = get_config_value(configurable.openai_api_key)
+    base_url = get_config_value(configurable.openai_base_url)
 
     # Report planner instructions
     planner_message = """Generate the sections of the report. Your response must include a 'sections' field containing a list of sections. 
@@ -113,7 +120,9 @@ async def generate_report_plan(state: ReportState, config: RunnableConfig):
     else:
         # With other models, thinking tokens are not specifically allocated
         planner_llm = init_chat_model(model=planner_model, 
-                                      model_provider=planner_provider)
+                                      model_provider=planner_provider,
+                                      api_key=api_key,
+                                      base_url=base_url)
     
     # Generate the report sections
     structured_llm = planner_llm.with_structured_output(Sections)
@@ -202,7 +211,10 @@ def generate_queries(state: SectionState, config: RunnableConfig):
     # Generate queries 
     writer_provider = get_config_value(configurable.writer_provider)
     writer_model_name = get_config_value(configurable.writer_model)
-    writer_model = init_chat_model(model=writer_model_name, model_provider=writer_provider) 
+    api_key = get_config_value(configurable.openai_api_key)
+    base_url = get_config_value(configurable.openai_base_url)
+
+    writer_model = init_chat_model(model=writer_model_name, model_provider=writer_provider, api_key=api_key, base_url=base_url) 
     structured_llm = writer_model.with_structured_output(Queries)
 
     # Format system instructions
@@ -285,7 +297,10 @@ def write_section(state: SectionState, config: RunnableConfig) -> Command[Litera
     # Generate section  
     writer_provider = get_config_value(configurable.writer_provider)
     writer_model_name = get_config_value(configurable.writer_model)
-    writer_model = init_chat_model(model=writer_model_name, model_provider=writer_provider) 
+    api_key = get_config_value(configurable.openai_api_key)
+    base_url = get_config_value(configurable.openai_base_url)
+
+    writer_model = init_chat_model(model=writer_model_name, model_provider=writer_provider, api_key=api_key, base_url=base_url) 
 
     section_content = writer_model.invoke([SystemMessage(content=section_writer_instructions),
                                            HumanMessage(content=section_writer_inputs_formatted)])
@@ -315,7 +330,9 @@ def write_section(state: SectionState, config: RunnableConfig) -> Command[Litera
                                            thinking={"type": "enabled", "budget_tokens": 16_000}).with_structured_output(Feedback)
     else:
         reflection_model = init_chat_model(model=planner_model, 
-                                           model_provider=planner_provider).with_structured_output(Feedback)
+                                           model_provider=planner_provider,
+                                           api_key=api_key,
+                                           base_url=base_url).with_structured_output(Feedback)
     # Generate feedback
     feedback = reflection_model.invoke([SystemMessage(content=section_grader_instructions_formatted),
                                         HumanMessage(content=section_grader_message)])
@@ -363,7 +380,11 @@ def write_final_sections(state: SectionState, config: RunnableConfig):
     # Generate section  
     writer_provider = get_config_value(configurable.writer_provider)
     writer_model_name = get_config_value(configurable.writer_model)
-    writer_model = init_chat_model(model=writer_model_name, model_provider=writer_provider) 
+
+    api_key = get_config_value(configurable.openai_api_key)
+    base_url = get_config_value(configurable.openai_base_url)
+
+    writer_model = init_chat_model(model=writer_model_name, model_provider=writer_provider, api_key=api_key, base_url=base_url) 
     
     section_content = writer_model.invoke([SystemMessage(content=system_instructions),
                                            HumanMessage(content="Generate a report section based on the provided sources.")])
@@ -476,3 +497,17 @@ builder.add_edge("write_final_sections", "compile_final_report")
 builder.add_edge("compile_final_report", END)
 
 graph = builder.compile()
+
+if __name__ == "__main__":
+    config = Configuration.from_runnable_config()
+    # Create a topic
+    topic = "Overview of the AI inference market with focus on Fireworks, Together.ai, Groq"
+
+    import asyncio
+
+    async def main():
+        # Run the graph until the interruption
+        async for event in graph.astream({"topic":topic,}, stream_mode="updates"):
+            print(event)
+
+    asyncio.run(main())

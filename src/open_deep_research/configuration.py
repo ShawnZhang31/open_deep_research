@@ -35,10 +35,22 @@ class Configuration:
     report_structure: str = DEFAULT_REPORT_STRUCTURE # Defaults to the default report structure
     number_of_queries: int = 2 # Number of search queries to generate per iteration
     max_search_depth: int = 2 # Maximum number of reflection + search iterations
-    planner_provider: str = "anthropic"  # Defaults to Anthropic as provider
-    planner_model: str = "claude-3-7-sonnet-latest" # Defaults to claude-3-7-sonnet-latest
-    writer_provider: str = "anthropic" # Defaults to Anthropic as provider
-    writer_model: str = "claude-3-5-sonnet-latest" # Defaults to claude-3-5-sonnet-latest
+    # planner_provider: str = "anthropic"  # Defaults to Anthropic as provider
+    # planner_model: str = "claude-3-7-sonnet-latest" # Defaults to claude-3-7-sonnet-latest
+    # writer_provider: str = "anthropic" # Defaults to Anthropic as provider
+    # writer_model: str = "claude-3-5-sonnet-latest" # Defaults to claude-3-5-sonnet-latest
+    planner_provider: str = "openai"
+    # planner_model: str = "Qwen/Qwen2.5-72B-Instruct-128K"
+    planner_model: str = "deepseek-ai/DeepSeek-V3"
+
+    writer_provider: str = "openai"
+    # writer_model: str = "Qwen/Qwen2.5-72B-Instruct-128K"
+    writer_model: str = "deepseek-ai/DeepSeek-V3"
+
+    openai_base_url: str = "https://"
+    openai_api_key: str = "sk-"
+
+
     search_api: SearchAPI = SearchAPI.TAVILY # Default to TAVILY
     search_api_config: Optional[Dict[str, Any]] = None 
 
